@@ -1,7 +1,7 @@
 {
-  "name": "vnu-jar",
-  "version": "17.11.1",
-  "description": "Provides the Nu Html Checker «vnu.jar» file",
+  "name": "vnu-jar-master",
+  "version": "18.2.9",
+  "description": "Provides the Nu Html Checker «vnu.jar» file from the master branch",
   "main": "vnu-jar.js",
   "engines": {
     "node": ">=0.10"

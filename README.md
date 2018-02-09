@@ -3,7 +3,7 @@
    [1]: https://goo.gl/1kHqwI
    [2]: https://gitter.im/validator/validator
    [3]: https://goo.gl/3PC2Qn
-   [4]: https://github.com/validator/validator/releases/latest
+   [4]: https://github.com/prantlf/validator/releases/latest
 
 The Nu Html Checker (v.Nu) is the backend of [checker.html5.org][5],
 [html5.validator.nu][6], and [validator.w3.org/nu][7]. Its [source code is
@@ -13,7 +13,7 @@ It is released as two packages:
    [5]: https://checker.html5.org/
    [6]: https://html5.validator.nu
    [7]: https://validator.w3.org/nu/
-   [8]: https://github.com/validator/validator
+   [8]: https://github.com/prantlf/validator
    [9]: https://validator.github.io/validator/#build-instructions
 
   * `vnu.jar` is a portable standalone version for [batch-checking documents
@@ -30,13 +30,15 @@ It is released as two packages:
 **Note:** The _vnu.jar_ and _vnu.war_ packages require a Java 8 environment;
 they won’t run in Java 7 or older environment.
 
-You can [get the latest release][13] or run [`npm install vnu-jar`][14], [`pip
+This fork publishes a new vnu-jar-master NPM module, which is built from the master branch. It is supposed to be newer, than `vnu-jar` and `vnu-jar@dev`, if you need to detect more problems in your HTML, than the released or development versions can today.
+
+You can [get the latest release][13] or run [`npm install vnu-jar-master`][14], [`pip
 install html5validator`][15] or [`brew install vnu`][16], and see the **Usage**
 and **Web-based checking** sections below. Or automate your document checking
 with a frontend such as:
 
-   [13]: https://github.com/validator/validator/releases/latest
-   [14]: https://www.npmjs.com/package/vnu-jar
+   [13]: https://github.com/prantlf/validator/releases/latest
+   [14]: https://www.npmjs.com/package/vnu-jar-master
    [15]: https://github.com/svenkreiss/html5validator
    [16]: https://libraries.io/homebrew/vnu
 
@@ -49,7 +51,7 @@ with a frontend such as:
   * [LMVTFY: Let Me Validate That For You][22] (auto-check HTML of
   JSFiddle/JSBin etc. links in github issue comments)
 
-   [17]: https://github.com/jzaefferer/grunt-html
+   [17]: https://github.com/prantlf/grunt-html
    [18]: https://github.com/watilde/gulp-html
    [19]: https://github.com/svenkreiss/html5validator
    [20]: https://jekyllrb.com/
@@ -305,10 +307,10 @@ checkingーor to any remote instance of the checker HTTP service running anywher
 on the Web.
 
 The [latest releases of the vnu.jar and vnu.war packages][27] are available from
-the `validator` project at github. The following are detailed instructions on
+this fork of the `validator` project at github. The following are detailed instructions on
 using them.
 
-   [27]: https://github.com/validator/validator/releases/latest
+   [27]: https://github.com/prantlf/validator/releases/latest
 
 **Note:** Replace _"~/vnu.jar"_ or _"~/vnu.war"_ below with the actual paths to
 those files on your system.
