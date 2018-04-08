@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*- vim: set fileencoding=utf-8 :
 
 # Copyright (c) 2007 Henri Sivonen
-# Copyright (c) 2008-2017 Mozilla Foundation
+# Copyright (c) 2008-2018 Mozilla Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -83,9 +83,10 @@ year = time.strftime('%y')
 month = time.strftime('%m').lstrip('0')
 day = time.strftime('%d').lstrip('0')
 validatorVersion = "%s.%s.%s" % (year, month, day)
-# validatorVersion = "17.11.1"
+# validatorVersion = "18.3.0"
 jingVersion = "20171006VNU"
-htmlparserVersion = "1.4.9"
+htmlparserVersion = "1.4.11"
+cssvalidatorVersion = "1.0.1"
 galimatiasVersion = "0.1.2"
 
 buildRoot = '.'
@@ -144,7 +145,7 @@ miniDoc = '<!doctype html><meta charset=utf-8><title>test</title>'
 
 dependencyPackages = [
     ("https://repo1.maven.org/maven2/com/ibm/icu/icu4j/58.2/icu4j-58.2.jar", "605d8a0276a280ff6332c3bd26071180"),  # nopep8
-    ("https://repo1.maven.org/maven2/com/shapesecurity/salvation/2.3.0/salvation-2.3.0.jar", "18137575ef72f160352ff0c395243ed6"),  # nopep8
+    ("https://repo1.maven.org/maven2/com/shapesecurity/salvation/2.4.0/salvation-2.4.0.jar", "41bf4aa35eee2ff74cb07a763ecba190"),  # nopep8
     ("https://repo1.maven.org/maven2/commons-codec/commons-codec/1.10/commons-codec-1.10.jar", "353cf6a2bdba09595ccfa073b78c7fcb"),  # nopep8
     ("https://repo1.maven.org/maven2/commons-fileupload/commons-fileupload/1.3.1/commons-fileupload-1.3.1.jar", "ed8eec445e21ec7e49b86bf3cbcffcbc"),  # nopep8
     ("https://repo1.maven.org/maven2/commons-io/commons-io/2.4/commons-io-2.4.jar", "7f97854dc04c119d461fed14f5d8bb96"),  # nopep8
@@ -168,12 +169,10 @@ dependencyPackages = [
     ("https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-util/9.2.9.v20150224/jetty-util-9.2.9.v20150224.jar", "cb039d6b03c838ea90748469fe928d60"),  # nopep8
     ("https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-util-ajax/9.2.9.v20150224/jetty-util-ajax-9.2.9.v20150224.jar", "e3f16ce949fa5103975a1c056d2cc9cb"),  # nopep8
     ("https://repo1.maven.org/maven2/org/hamcrest/hamcrest-api/1.0/hamcrest-api-1.0.jar", "1d04e4713e19ff23f9820f271e45c3be"),  # nopep8
-    ("https://repo1.maven.org/maven2/org/mozilla/rhino/1.7R5/rhino-1.7R5.jar", "515233bd8a534c0468f6e397fc6b1925"),  # nopep8
     ("https://repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.13/slf4j-api-1.7.13.jar", "a5168034046d95e07f4aae3f5e2d1c67"),  # nopep8
     ("https://repo1.maven.org/maven2/xom/xom/1.2.5/xom-1.2.5.jar", "91b16b5b53ae0804671a57dbf7623fad"),  # nopep8
     ("https://repo1.maven.org/maven2/net/arnx/jsonic/1.3.9/jsonic-1.3.9.jar", "0a227160073902d0a79b9abfcb1e1bac"),  # nopep8
     ("https://repo1.maven.org/maven2/javax/mail/mail/1.5.0-b01/mail-1.5.0-b01.jar", "7b56e34995f7f1cb55d7806b935f90a4"),  # nopep8
-    ("https://raw.githubusercontent.com/tabatkins/parse-css/a878df1503af3bfb63493a63685a117a24988959/parse-css.js", "adbb69f7c71c8d5703f8b9d770bfc71f"),  # nopep8
 ]
 
 runDependencyJars = [
@@ -187,7 +186,7 @@ runDependencyJars = [
     "httpcore-4.4.jar",
     "httpclient-4.4.jar",
     "icu4j-58.2.jar",
-    "salvation-2.3.0.jar",
+    "salvation-2.4.0.jar",
     "javax.servlet-api-3.1.0.jar",
     "jchardet-1.0.jar",
     "jetty-http-9.2.9.v20150224.jar",
@@ -200,7 +199,6 @@ runDependencyJars = [
     "jetty-util-ajax-9.2.9.v20150224.jar",
     "log4j-1.2.17.jar",
     "mail-1.5.0-b01.jar",
-    "rhino-1.7R5.jar",
     "langdetect-1.1-20120112.jar",
     "jsonic-1.3.9.jar",
 ]
@@ -866,7 +864,7 @@ def checkService():
     url = "http://localhost:%s/%s" % (portNumber, query)
     args = getRunArgs(str(int(heapSize) * 1024))
     daemon = subprocess.Popen([javaCmd, ] + args)
-    time.sleep(15)
+    time.sleep(25)
     print("Checking %s" % url)
     try:
         print(urlopen(url).read())
@@ -914,6 +912,8 @@ class Release():
             self.version = jingVersion
         if self.artifactId == "htmlparser":
             self.version = htmlparserVersion
+        if self.artifactId == "cssvalidator":
+            self.version = cssvalidatorVersion
         if self.artifactId == "galimatias":
             self.version = galimatiasVersion
         if url == snapshotsRepoUrl:
@@ -936,7 +936,7 @@ class Release():
                 hasher.update(buf)
                 buf = f.read(BLOCKSIZE)
         o = open("%s.%s" % (filename, md5OrSha1), 'wb')
-        o.write(hasher.hexdigest())
+        o.write(hasher.hexdigest().encode())
         o.close
 
     def writeHashes(self):
@@ -1116,7 +1116,7 @@ class Release():
             "-DserverId=ossrh",
         ]
         output = subprocess.check_output(mvnArgs)
-        for line in output.split('\n'):
+        for line in output.decode('utf-8').split('\n'):
             if "nuvalidator" in line:
                 stagingRepositoryId = "nuvalidator-" + line[19:23]
                 mvnArgs = [
@@ -1324,8 +1324,6 @@ def preparePropertiesFile():
 def prepareLocalEntityJar():
     ensureDirExists(filesDir)
     preparePropertiesFile()
-    shutil.copyfile(os.path.join(dependencyDir, "parse-css.js"),
-                    os.path.join(filesDir, "parse-css-js"))
     shutil.copyfile(os.path.join(buildRoot, presetsFile),
                     os.path.join(filesDir, "presets"))
     shutil.copyfile(os.path.join(buildRoot, aboutFile),
@@ -1678,6 +1676,15 @@ else:
             release.uploadToCentral(snapshotsRepoUrl)
         elif arg == 'htmlparser-release':
             release = Release("htmlparser")
+            release.uploadToCentral(stagingRepoUrl)
+        elif arg == 'cssvalidator-bundle':
+            release = Release("cssvalidator")
+            release.createBundle()
+        elif arg == 'cssvalidator-snapshot':
+            release = Release("cssvalidator")
+            release.uploadToCentral(snapshotsRepoUrl)
+        elif arg == 'cssvalidator-release':
+            release = Release("cssvalidator")
             release.uploadToCentral(stagingRepoUrl)
         elif arg == 'jing-bundle':
             release = Release("jing")

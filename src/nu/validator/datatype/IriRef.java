@@ -1,41 +1,34 @@
 /*
  * Copyright (c) 2006 Henri Sivonen
- * Copyright (c) 2007-2016 Mozilla Foundation
+ * Copyright (c) 2007-2018 Mozilla Foundation
  *
- * Permission is hereby granted, free of charge, to any person obtaining a 
- * copy of this software and associated documentation files (the "Software"), 
- * to deal in the Software without restriction, including without limitation 
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, 
- * and/or sell copies of the Software, and to permit persons to whom the 
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in 
+ * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
- * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
 
 package nu.validator.datatype;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Reader;
-import java.io.StringReader;
 
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ContextFactory;
-import org.mozilla.javascript.RhinoException;
 import org.relaxng.datatype.DatatypeException;
 import nu.validator.io.DataUri;
 import nu.validator.io.DataUriException;
-import nu.validator.io.Utf8PercentDecodingReader;
 
 import io.mola.galimatias.URL;
 import io.mola.galimatias.URLParsingSettings;
@@ -141,30 +134,7 @@ public class IriRef extends AbstractDatatype {
                 if (isWellKnown(scheme)) {
                     url = URL.parse(settings, urlString);
                 } else if ("javascript".contentEquals(scheme)) {
-                    // StringBuilder sb = new StringBuilder(2 +
-                    // literal.length());
-                    // sb.append("x-").append(literal);
-                    // iri = fac.construct(sb.toString());
                     url = null; // Don't bother user with generic IRI syntax
-                    Reader reader = new BufferedReader(
-                            new Utf8PercentDecodingReader(new StringReader(
-                                    "function(event){" + tail.toString() + "}")));
-                    // XXX CharSequenceReader
-                    reader.mark(1);
-                    int c = reader.read();
-                    if (c != 0xFEFF) {
-                        reader.reset();
-                    }
-                    try {
-                        Context context = ContextFactory.getGlobal().enterContext();
-                        context.setOptimizationLevel(0);
-                        context.setLanguageVersion(Context.VERSION_1_6);
-                        // -1 for lineno arg prevents Rhino from appending
-                        // "(unnamed script#1)" to all error messages
-                        context.compileReader(reader, null, -1, null);
-                    } finally {
-                        Context.exit();
-                    }
                 } else if ("data".contentEquals(scheme)) {
                     data = true;
                     url = URL.parse(settings, urlString);
@@ -179,11 +149,8 @@ public class IriRef extends AbstractDatatype {
                 }
             }
         } catch (GalimatiasParseException e) {
-            throw newDatatypeException(messagePrologue + e.getMessage() + ".");
-        } catch (IOException e) {
-            throw newDatatypeException(messagePrologue + e.getMessage());
-        } catch (RhinoException e) {
-            throw newDatatypeException(messagePrologue + e.getMessage());
+            throw newDatatypeException(
+                    messagePrologue + e.getMessage() + ".");
         }
         if (url != null) {
             if (data) {

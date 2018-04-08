@@ -36,6 +36,8 @@ import java.util.Set;
 import java.util.Arrays;
 import java.util.Collections;
 
+import javax.servlet.http.HttpServletRequest;
+
 import nu.validator.checker.AttributeUtil;
 import nu.validator.checker.Checker;
 import nu.validator.checker.LocatorImpl;
@@ -74,7 +76,12 @@ import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
+import org.apache.log4j.Logger;
+
 public class Assertions extends Checker {
+
+    private static final Logger log4j = //
+            Logger.getLogger(Assertions.class);
 
     private static boolean followW3Cspec = "1".equals(
             System.getProperty("nu.validator.servlet.follow-w3c-spec"));
@@ -344,12 +351,12 @@ public class Assertions extends Checker {
         OBSOLETE_STYLE_ATTRS.put("hspace",
                 new String[] { "img", "object", "embed" });
         OBSOLETE_STYLE_ATTRS.put("link", new String[] { "body" });
-        OBSOLETE_STYLE_ATTRS.put("marginbottom", new String[] { "body" });
+        OBSOLETE_STYLE_ATTRS.put("bottommargin", new String[] { "body" });
         OBSOLETE_STYLE_ATTRS.put("marginheight",
                 new String[] { "iframe", "body" });
-        OBSOLETE_STYLE_ATTRS.put("marginleft", new String[] { "body" });
-        OBSOLETE_STYLE_ATTRS.put("marginright", new String[] { "body" });
-        OBSOLETE_STYLE_ATTRS.put("margintop", new String[] { "body" });
+        OBSOLETE_STYLE_ATTRS.put("leftmargin", new String[] { "body" });
+        OBSOLETE_STYLE_ATTRS.put("rightmargin", new String[] { "body" });
+        OBSOLETE_STYLE_ATTRS.put("topmargin", new String[] { "body" });
         OBSOLETE_STYLE_ATTRS.put("marginwidth",
                 new String[] { "iframe", "body" });
         OBSOLETE_STYLE_ATTRS.put("noshade", new String[] { "hr" });
@@ -437,7 +444,7 @@ public class Assertions extends Checker {
             mask = maskAsObject.intValue();
         }
         mask |= (1 << number);
-        ANCESTOR_MASK_BY_DESCENDANT.put(descendant, new Integer(mask));
+        ANCESTOR_MASK_BY_DESCENDANT.put(descendant, Integer.valueOf(mask));
     }
 
     static {
@@ -561,6 +568,7 @@ public class Assertions extends Checker {
         registerRequiredAncestorRole("group", "listitem");
         registerRequiredAncestorRole("group", "menuitemradio");
         registerRequiredAncestorRole("list", "listitem");
+        registerRequiredAncestorRole("row", "cell");
         registerRequiredAncestorRole("row", "gridcell");
         registerRequiredAncestorRole("row", "columnheader");
         registerRequiredAncestorRole("row", "rowheader");
@@ -570,6 +578,7 @@ public class Assertions extends Checker {
         registerRequiredAncestorRole("treegrid", "row");
         registerRequiredAncestorRole("treegrid", "rowgroup");
         registerRequiredAncestorRole("table", "rowgroup");
+        registerRequiredAncestorRole("table", "row");
     }
 
     private static final Set<String> MUST_NOT_DANGLE_IDREFS = new HashSet<>();
@@ -1140,6 +1149,21 @@ public class Assertions extends Checker {
         super();
     }
 
+    private HttpServletRequest request;
+
+    private boolean sourceIsCss;
+
+    public void setSourceIsCss(boolean sourceIsCss) {
+        this.sourceIsCss = sourceIsCss;
+    }
+
+    private void incrementUseCounter(String useCounterName) {
+        if (request != null) {
+            request.setAttribute(
+                    "http://validator.nu/properties/" + useCounterName, true);
+        }
+    }
+
     private void push(StackNode node) {
         currentPtr++;
         if (currentPtr == stack.length) {
@@ -1219,6 +1243,12 @@ public class Assertions extends Checker {
     private final void errObsoleteAttribute(String attribute, String element,
             String suggestion) throws SAXException {
         err("The \u201C" + attribute + "\u201D attribute on the \u201C"
+                + element + "\u201D element is obsolete." + suggestion);
+    }
+
+    private final void warnObsoleteAttribute(String attribute, String element,
+            String suggestion) throws SAXException {
+        warn("The \u201C" + attribute + "\u201D attribute on the \u201C"
                 + element + "\u201D element is obsolete." + suggestion);
     }
 
@@ -1360,6 +1390,8 @@ public class Assertions extends Checker {
             return;
         }
         StackNode node = pop();
+        String systemId = node.locator().getSystemId();
+        String publicId = node.locator().getPublicId();
         Locator locator = null;
         openSingleSelects.remove(node);
         openLabels.remove(node);
@@ -1425,9 +1457,9 @@ public class Assertions extends Checker {
                 stack[currentPtr].setOptionFound();
             } else if ("style" == localName) {
                 String styleContents = node.getTextContent().toString();
-                boolean styleHasNewline = false;
-                if (styleContents.indexOf('\n') > -1) {
-                    styleHasNewline = true;
+                int lineOffset = 0;
+                if (styleContents.startsWith("\n")) {
+                    lineOffset = 1;
                 }
                 ApplContext ac = new ApplContext("en");
                 ac.setCssVersionAndProfile("css3svg");
@@ -1438,17 +1470,21 @@ public class Assertions extends Checker {
                 ac.setFakeURL("file://localhost/StyleElement");
                 StyleSheetParser styleSheetParser = new StyleSheetParser();
                 styleSheetParser.parseStyleSheet(ac,
-                        new StringReader(styleContents), null);
+                        new StringReader(styleContents.substring(lineOffset)),
+                        null);
                 styleSheetParser.getStyleSheet().findConflicts(ac);
                 Errors errors = styleSheetParser.getStyleSheet().getErrors();
+                if (errors.getErrorCount() > 0) {
+                    incrementUseCounter("style-element-errors-found");
+                }
                 for (int i = 0; i < errors.getErrorCount(); i++) {
                     String message = "";
                     String cssProperty = "";
                     String cssMessage = "";
                     CssError error = errors.getErrorAt(i);
-                    int beginLine = error.getBeginLine();
+                    int beginLine = error.getBeginLine() + lineOffset;
                     int beginColumn = error.getBeginColumn();
-                    int endLine = error.getEndLine();
+                    int endLine = error.getEndLine() + lineOffset;
                     int endColumn = error.getEndColumn();
                     if (beginLine == 0) {
                         continue;
@@ -1478,13 +1514,16 @@ public class Assertions extends Checker {
                                 + endLine - 1;
                         int lastColumn = endColumn;
                         int columnOffset = node.locator.getColumnNumber();
-                        if (styleHasNewline) {
+                        if (error.getBeginLine() == 1) {
+                            if (lineOffset != 0) {
+                                columnOffset = 0;
+                            }
+                        } else {
                             columnOffset = 0;
                         }
+                        String prefix = sourceIsCss ? "" : "CSS: ";
                         SAXParseException spe = new SAXParseException( //
-                                message, //
-                                node.locator.getPublicId(), //
-                                node.locator.getSystemId(), //
+                                prefix + message, publicId, systemId, //
                                 lastLine, lastColumn);
                         int[] start = {
                                 node.locator.getLineNumber() + beginLine - 1,
@@ -1492,7 +1531,7 @@ public class Assertions extends Checker {
                         if ((getErrorHandler() instanceof MessageEmitterAdapter)
                                 && !(getErrorHandler() instanceof TestRunner)) {
                             ((MessageEmitterAdapter) getErrorHandler()) //
-                                    .cssError(spe, start);
+                                    .errorWithStart(spe, start);
                         } else {
                             getErrorHandler().error(spe);
                         }
@@ -1519,6 +1558,7 @@ public class Assertions extends Checker {
     @Override
     public void startDocument() throws SAXException {
         reset();
+        request = getRequest();
         stack = new StackNode[32];
         currentPtr = 0;
         currentFigurePtr = -1;
@@ -1652,6 +1692,9 @@ public class Assertions extends Checker {
                         styleSheetParser.getStyleSheet().findConflicts(ac);
                         Errors errors = //
                                 styleSheetParser.getStyleSheet().getErrors();
+                        if (errors.getErrorCount() > 0) {
+                            incrementUseCounter("style-attribute-errors-found");
+                        }
                         for (int j = 0; j < errors.getErrorCount(); j++) {
                             String message = "";
                             String cssProperty = "";
@@ -1679,22 +1722,7 @@ public class Assertions extends Checker {
                                 message = ex.getMessage();
                             }
                             if (!"".equals(message)) {
-                                SAXParseException spe = new SAXParseException(
-                                        message, //
-                                        getDocumentLocator().getPublicId(), //
-                                        getDocumentLocator().getSystemId(), //
-                                        getDocumentLocator().getLineNumber(),
-                                        -1);
-                                int[] start = { -1, -1, 0 };
-                                if ((getErrorHandler() //
-                                instanceof MessageEmitterAdapter)
-                                        && !(getErrorHandler() //
-                                        instanceof TestRunner)) {
-                                    ((MessageEmitterAdapter) //
-                                    getErrorHandler()).cssError(spe, start);
-                                } else {
-                                    getErrorHandler().error(spe);
-                                }
+                                err("CSS: " + message);
                             }
                         }
                     } else if ("tabindex" == attLocal) {
@@ -2209,6 +2237,12 @@ public class Assertions extends Checker {
                         node.setTrackDescendants();
                     }
                 }
+            } else if ("hgroup" == localName) {
+                incrementUseCounter("hgroup-found");
+                String systemId = getDocumentLocator().getSystemId();
+                if (systemId != null) {
+                    log4j.info("hgroup " + systemId);
+                }
             } else if ("main" == localName) {
                 for (int i = 0; i < currentPtr; i++) {
                     String ancestorName = stack[currentPtr - i].getName();
@@ -2362,6 +2396,17 @@ public class Assertions extends Checker {
                 // script language
                 if (languageJavaScript && typeNotTextJavaScript) {
                     err("A \u201Cscript\u201D element with the \u201Clanguage=\"JavaScript\"\u201D attribute set must not have a \u201Ctype\u201D attribute whose value is not \u201Ctext/javascript\u201D.");
+                }
+                if (atts.getIndex("", "charset") >= 0) {
+                    warnObsoleteAttribute("charset", "script", "");
+                    if (!"utf-8".equals(
+                            atts.getValue("", "charset").toLowerCase())) {
+                        err("The only allowed value for the \u201Ccharset\u201D"
+                                + " attribute for the \u201Cscript\u201D"
+                                + " element is \u201Cutf-8\u201D. (But the"
+                                + " attribute is not needed and should be"
+                                + " omitted altogether.)");
+                    }
                 }
                 // src-less script
                 if (atts.getIndex("", "src") < 0) {
@@ -2596,6 +2641,12 @@ public class Assertions extends Checker {
                             + " \u201CIE=edge\u201D.");
                 }
                 if (atts.getIndex("", "charset") > -1) {
+                    if (!"utf-8".equals(
+                            atts.getValue("", "charset").toLowerCase())) {
+                        err("The only allowed value for the \u201Ccharset\u201D"
+                                + " attribute for the \u201Cmeta\u201D"
+                                + " element is \u201Cutf-8\u201D.");
+                    }
                     if (hasMetaCharset) {
                         err("A document must not include more than one"
                                 + " \u201Cmeta\u201D element with a"
@@ -2957,6 +3008,9 @@ public class Assertions extends Checker {
             if ("style" == localName) {
                 child.setIsCollectingCharacters(true);
             }
+            if ("script" == localName) {
+                child.setIsCollectingCharacters(true);
+            }
             if (activeDescendant != null && !activeDescendantWithAriaOwns) {
                 openActiveDescendants.put(child,
                         new LocatorImpl(getDocumentLocator()));
@@ -3116,7 +3170,11 @@ public class Assertions extends Checker {
                         stack[currentPtr - 1].setNonEmptyOption(
                                 (new LocatorImpl(getDocumentLocator())));
                     }
-                    return;
+                    return; // This return can be removed if other code is added
+                            // here. But it's here for now because we know we
+                            // have at least one non-WS character, and for the
+                            // purposes of the current code, that's all we need;
+                            // it's a waste to keep checking for more.
             }
         }
     }

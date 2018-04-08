@@ -53,10 +53,13 @@ import java.util.regex.Pattern;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
+
 import javax.servlet.http.HttpServletResponse;
 
+import nu.validator.checker.LanguageDetectingChecker;
 import nu.validator.checker.XmlPiChecker;
 import nu.validator.checker.jing.CheckerSchema;
+import nu.validator.checker.schematronequiv.Assertions;
 import nu.validator.gnu.xml.aelfred2.FatalSAXException;
 import nu.validator.gnu.xml.aelfred2.SAXDriver;
 import nu.validator.htmlparser.common.DocumentMode;
@@ -91,8 +94,6 @@ import nu.validator.xml.ContentTypeParser;
 import nu.validator.xml.ContentTypeParser.NonXmlContentTypeException;
 import nu.validator.xml.DataUriEntityResolver;
 import nu.validator.xml.IdFilter;
-import nu.validator.xml.LanguageDetectingXMLReaderWrapper;
-import nu.validator.xml.UseCountingXMLReaderWrapper;
 import nu.validator.xml.NamespaceDroppingXMLReaderWrapper;
 import nu.validator.xml.NullEntityResolver;
 import nu.validator.xml.PrudentHttpEntityResolver;
@@ -231,7 +232,8 @@ class VerifierServletTransaction implements DocumentModeHandler, SchemaResolver 
     private static final char[] SIMPLE_UI = "Simplified Interface".toCharArray();
 
     private static final byte[] CSS_CHECKING_PROLOG = //
-                    "<!DOCTYPE html><title>s</title><style>\n".getBytes();
+            "<!DOCTYPE html><html lang=''><title>s</title><style>\n" //
+                    .getBytes();
 
     private static final byte[] CSS_CHECKING_EPILOG = "\n</style>".getBytes();
 
@@ -264,7 +266,8 @@ class VerifierServletTransaction implements DocumentModeHandler, SchemaResolver 
             "http://c.validator.nu/unchecked/",
             "http://c.validator.nu/usemap/", "http://c.validator.nu/obsolete/",
             "http://c.validator.nu/xml-pi/", "http://c.validator.nu/unsupported/",
-            "http://c.validator.nu/microdata/" };
+            "http://c.validator.nu/microdata/",
+            "http://c.validator.nu/langdetect/" };
 
     private static final String[] ALL_CHECKERS_HTML4 = {
             "http://c.validator.nu/table/", "http://c.validator.nu/nfc/",
@@ -541,6 +544,8 @@ class VerifierServletTransaction implements DocumentModeHandler, SchemaResolver 
                     CheckerSchema.MICRODATA_CHECKER);
             schemaMap.put("http://c.validator.nu/rdfalite/",
                     CheckerSchema.RDFALITE_CHECKER);
+            schemaMap.put("http://c.validator.nu/langdetect/",
+                    CheckerSchema.LANGUAGE_DETECTING_CHECKER);
 
             for (String presetUrl : presetUrls) {
                 for (String url : SPACE.split(presetUrl)) {
@@ -612,12 +617,6 @@ class VerifierServletTransaction implements DocumentModeHandler, SchemaResolver 
                 }
                 log4j.debug("Filter file read.");
             }
-
-            log4j.debug("Initializing language detector.");
-
-            LanguageDetectingXMLReaderWrapper.initialize();
-
-            log4j.debug("Initialization complete.");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -1005,17 +1004,6 @@ class VerifierServletTransaction implements DocumentModeHandler, SchemaResolver 
         laxType = (request.getParameter("laxtype") != null);
     }
 
-    private boolean useXhtml5Schema() {
-        if ("".equals(schemaUrls)) {
-            return false;
-        }
-        return (schemaUrls.contains("http://s.validator.nu/xhtml5.rnc")
-                || schemaUrls.contains("http://s.validator.nu/xhtml5-all.rnc")
-                || schemaUrls.contains("http://s.validator.nu/xhtml5-its.rnc")
-                || schemaUrls.contains(
-                        "http://s.validator.nu/xhtml5-rdfalite.rnc"));
-    }
-
     private boolean isHtmlUnsafePreset() {
         if ("".equals(schemaUrls)) {
             return false;
@@ -1189,7 +1177,11 @@ class VerifierServletTransaction implements DocumentModeHandler, SchemaResolver 
             }
         } catch (IOException e) {
             isHtmlOrXhtml = false;
-            errorHandler.ioError(e);
+            if (e.getCause() instanceof org.apache.http.TruncatedChunkException) {
+                log4j.debug("TruncatedChunkException", e.getCause());
+            } else {
+                errorHandler.ioError(e);
+            }
         } catch (IncorrectSchemaException e) {
             log4j.debug("IncorrectSchemaException", e);
             errorHandler.schemaError(e);
@@ -1386,58 +1378,22 @@ class VerifierServletTransaction implements DocumentModeHandler, SchemaResolver 
                 stats.incrementField(Statistics.Field.LOGIC_ERROR);
             }
             if (request.getAttribute(
-                    "http://validator.nu/properties/style-in-body-found") != null
-                    && (boolean) request.getAttribute(
-                            "http://validator.nu/properties/style-in-body-found")) {
-                stats.incrementField(Statistics.Field.STYLE_IN_BODY_FOUND);
-            }
-            if (request.getAttribute(
-                    "http://validator.nu/properties/h1-multiple") != null
-                    && (boolean) request.getAttribute(
-                            "http://validator.nu/properties/h1-multiple")) {
-                stats.incrementField(Statistics.Field.H1_MULTIPLE_FOUND);
-            }
-            if (request.getAttribute(
-                    "http://validator.nu/properties/h1-multiple-with-section-ancestor") != null
-                    && (boolean) request.getAttribute(
-                            "http://validator.nu/properties/h1-multiple-with-section-ancestor")) {
-                stats.incrementField(Statistics.Field.H1_MULTIPLE_WITH_SECTION_ANCESTOR_FOUND);
-            }
-            if (request.getAttribute(
-                    "http://validator.nu/properties/h1-multiple-with-article-ancestor") != null
-                    && (boolean) request.getAttribute(
-                            "http://validator.nu/properties/h1-multiple-with-article-ancestor")) {
-                stats.incrementField(Statistics.Field.H1_MULTIPLE_WITH_ARTICLE_ANCESTOR_FOUND);
-            }
-            if (request.getAttribute(
-                    "http://validator.nu/properties/h1-multiple-with-aside-ancestor") != null
-                    && (boolean) request.getAttribute(
-                            "http://validator.nu/properties/h1-multiple-with-aside-ancestor")) {
-                stats.incrementField(Statistics.Field.H1_MULTIPLE_WITH_ASIDE_ANCESTOR_FOUND);
-            }
-            if (request.getAttribute(
-                    "http://validator.nu/properties/h1-multiple-with-nav-ancestor") != null
-                    && (boolean) request.getAttribute(
-                            "http://validator.nu/properties/h1-multiple-with-nav-ancestor")) {
-                stats.incrementField(Statistics.Field.H1_MULTIPLE_WITH_NAV_ANCESTOR_FOUND);
-            }
-            if (request.getAttribute(
                     "http://validator.nu/properties/hgroup-found") != null
                     && (boolean) request.getAttribute(
                             "http://validator.nu/properties/hgroup-found")) {
                 stats.incrementField(Statistics.Field.HGROUP_FOUND);
             }
             if (request.getAttribute(
-                    "http://validator.nu/properties/main-found") != null
+                    "http://validator.nu/properties/style-element-errors-found") != null
                     && (boolean) request.getAttribute(
-                            "http://validator.nu/properties/main-found")) {
-                stats.incrementField(Statistics.Field.MAIN_FOUND);
+                            "http://validator.nu/properties/style-element-errors-found")) {
+                stats.incrementField(Statistics.Field.STYLE_ELEMENT_ERRORS_FOUND);
             }
             if (request.getAttribute(
-                    "http://validator.nu/properties/main-multiple-visible-found") != null
+                    "http://validator.nu/properties/style-attribute-errors-found") != null
                     && (boolean) request.getAttribute(
-                            "http://validator.nu/properties/main-multiple-visible-found")) {
-                stats.incrementField(Statistics.Field.MAIN_MULTIPLE_VISIBLE_FOUND);
+                            "http://validator.nu/properties/style-attribute-errors-found")) {
+                stats.incrementField(Statistics.Field.STYLE_ATTRIBUTE_ERRORS_FOUND);
             }
             if (request.getAttribute(
                     "http://validator.nu/properties/lang-found") != null
@@ -1605,13 +1561,6 @@ class VerifierServletTransaction implements DocumentModeHandler, SchemaResolver 
                 if (validator != null) {
                     reader.setContentHandler(validator.getContentHandler());
                 }
-                reader = new LanguageDetectingXMLReaderWrapper(reader, request,
-                        errorHandler, documentInput.getLanguage(),
-                        documentInput.getSystemId());
-                if (Statistics.STATISTICS != null) {
-                    reader = new UseCountingXMLReaderWrapper(reader, request,
-                            documentInput.getSystemId());
-                }
                 break;
             case XML_NO_EXTERNAL_ENTITIES:
             case XML_EXTERNAL_ENTITIES_NO_VALIDATION:
@@ -1643,13 +1592,6 @@ class VerifierServletTransaction implements DocumentModeHandler, SchemaResolver 
                     reader = htmlParser;
                     if (validator != null) {
                         reader.setContentHandler(validator.getContentHandler());
-                    }
-                    reader = new LanguageDetectingXMLReaderWrapper(reader,
-                            request, errorHandler, documentInput.getLanguage(),
-                            documentInput.getSystemId());
-                    if (Statistics.STATISTICS != null) {
-                        reader = new UseCountingXMLReaderWrapper(reader,
-                                request, documentInput.getSystemId());
                     }
                 } else {
                     if (contentType != null) {
@@ -1729,15 +1671,6 @@ class VerifierServletTransaction implements DocumentModeHandler, SchemaResolver 
             reader.setContentHandler(new RootNamespaceSniffer(this,
                     validator.getContentHandler()));
             reader.setDTDHandler(validator.getDTDHandler());
-        }
-        if (useXhtml5Schema()) {
-            reader = new LanguageDetectingXMLReaderWrapper(reader, request,
-                    errorHandler, documentInput.getLanguage(),
-                    documentInput.getSystemId());
-            if (Statistics.STATISTICS != null) {
-                reader = new UseCountingXMLReaderWrapper(reader, request,
-                        documentInput.getSystemId());
-            }
         }
     }
 
@@ -1824,8 +1757,21 @@ class VerifierServletTransaction implements DocumentModeHandler, SchemaResolver 
         }
         Schema sch = resolveSchema(url, jingPropertyMap);
         Validator validator = sch.createValidator(jingPropertyMap);
-        if (validator.getContentHandler() instanceof XmlPiChecker) {
-          lexicalHandler = (LexicalHandler) validator.getContentHandler();
+        ContentHandler validatorContentHandler = validator.getContentHandler();
+        if (validatorContentHandler instanceof XmlPiChecker) {
+            lexicalHandler = (LexicalHandler) validatorContentHandler;
+        }
+        if (validatorContentHandler instanceof Assertions) {
+            Assertions assertions = (Assertions) validatorContentHandler;
+            assertions.setRequest(request);
+            assertions.setSourceIsCss(sourceCode.getIsCss());
+        }
+        if (validatorContentHandler instanceof LanguageDetectingChecker) {
+            LanguageDetectingChecker langdetect = //
+                (LanguageDetectingChecker) validatorContentHandler;
+            langdetect.setRequest(request);
+            langdetect.setHttpContentLanguageHeader(
+                    request.getHeader("Content-Language"));
         }
         return validator;
     }

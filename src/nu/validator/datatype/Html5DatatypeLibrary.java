@@ -154,12 +154,8 @@ public class Html5DatatypeLibrary implements DatatypeLibrary {
             return KeyLabelList.THE_INSTANCE;
         } else if ("zero".equals(typeLocalName)) {
             return Zero.THE_INSTANCE;
-        } else if ("script".equals(typeLocalName)) {
-            return Script.THE_INSTANCE;
         } else if ("script-documentation".equals(typeLocalName)) {
             return ScriptDocumentation.THE_INSTANCE;
-        } else if ("functionbody".equals(typeLocalName)) {
-            return FunctionBody.THE_INSTANCE;
         } else if ("a-rel".equals(typeLocalName)) {
             return ARel.THE_INSTANCE;
         } else if ("link-rel".equals(typeLocalName)) {

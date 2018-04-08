@@ -1,5 +1,5 @@
 <!--
-Copyright (c) 2013-2017 Mozilla Foundation
+Copyright (c) 2013-2018 Mozilla Foundation
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -46,8 +46,7 @@ DEALINGS IN THE SOFTWARE.
   <property name="jsonic-version" value="1.3.9" />
   <property name="langdetect-version" value="1.1-20120112" />
   <property name="log4j-version" value="1.2.17" />
-  <property name="rhino-version" value="1.7R5" />
-  <property name="salvation-version" value="2.3.0" />
+  <property name="salvation-version" value="2.4.0" />
   <target name="build" depends="jar"/>
   <target name="clean">
     <delete dir="${dist}"/>
@@ -82,7 +81,6 @@ DEALINGS IN THE SOFTWARE.
       <zipfileset src="../dependencies/jsonic-${jsonic-version}.jar"/>
       <zipfileset src="../dependencies/langdetect-${langdetect-version}.jar"/>
       <zipfileset src="../dependencies/log4j-${log4j-version}.jar"/>
-      <zipfileset src="../dependencies/rhino-${rhino-version}.jar"/>
       <zipfileset src="../dependencies/salvation-${salvation-version}.jar"/>
       <manifest>
         <attribute name="Main-Class" value="nu.validator.client.SimpleCommandLineValidator"/>
@@ -107,16 +105,6 @@ DEALINGS IN THE SOFTWARE.
       version="3.0">
     <display-name>validator.nu</display-name>
     <description>Mark-up validation service</description>
-
-    <filter>
-        <filter-name>gzip-filter</filter-name>
-        <filter-class>org.eclipse.jetty.servlets.GzipFilter</filter-class>
-    </filter>
-    <filter-mapping>
-        <filter-name>gzip-filter</filter-name>
-        <url-pattern>/*</url-pattern>
-    </filter-mapping>
-
     <filter>
         <filter-name>inbound-size-limit-filter</filter-name>
         <filter-class>nu.validator.servlet.InboundSizeLimitFilter</filter-class>
@@ -179,6 +167,7 @@ DEALINGS IN THE SOFTWARE.
       </fileset>
     </unzip>
     <copy todir="${dist}/war/lib">
+      <fileset file="../css-validator/css-validator.jar"/>
       <fileset file="../jing-trang/build/jing.jar"/>
       <fileset file="../jing-trang/lib/saxon9.jar"/>
       <fileset file="../jing-trang/lib/xercesImpl.jar"/>
@@ -195,13 +184,8 @@ DEALINGS IN THE SOFTWARE.
       <fileset file="../dependencies/langdetect-${langdetect-version}.jar"/>
       <fileset file="../dependencies/salvation-${salvation-version}.jar"/>
       <fileset file="../dependencies/jchardet-${jchardet-version}.jar"/>
-      <fileset file="../dependencies/jetty-http-${jetty-version}.jar"/> <!-- GzipFilter dependency -->
-      <fileset file="../dependencies/jetty-server-${jetty-version}.jar"/> <!-- GzipFilter dependency -->
-      <fileset file="../dependencies/jetty-servlets-${jetty-version}.jar"/> <!-- GzipFilter provider -->
-      <fileset file="../dependencies/jetty-util-${jetty-version}.jar"/> <!-- GzipFilter dependency -->
       <fileset file="../dependencies/jsonic-${jsonic-version}.jar"/>
       <fileset file="../dependencies/log4j-${log4j-version}.jar"/>
-      <fileset file="../dependencies/rhino-${rhino-version}.jar"/>
     </copy>
     <war destfile="${dist}/vnu.war" webxml="${dist}/war/web.xml">
       <lib dir="${dist}/war/lib"/>
@@ -218,8 +202,17 @@ DEALINGS IN THE SOFTWARE.
   </target>
   <target name="validator-javadoc-jar">
     <property name="javadoc-dir" value="${dist}/javadoc" />
-    <javadoc destdir="${javadoc-dir}">
-      <fileset dir="${src}"/>
+    <javadoc destdir="${javadoc-dir}" additionalparam="-Xdoclint:none">
+      <fileset dir="${src}">
+        <exclude name="META-INF/**"/>
+        <exclude name="nu/validator/datatype/data/encodings.json"/>
+        <exclude name="nu/validator/datatype/data/generate-encoding-data.py"/>
+        <exclude name="nu/validator/datatype/Pattern.java"/>
+        <exclude name="nu/validator/gnu/xml/aelfred2/COPYING"/>
+        <exclude name="nu/validator/gnu/xml/aelfred2/README"/>
+        <exclude name="nu/validator/gnu/xml/aelfred2/package.html"/>
+        <exclude name="nu/validator/localentities/**"/>
+      </fileset>
     </javadoc>
     <jar destfile="${validator-javadoc-jar}">
       <fileset dir="${javadoc-dir}" />
@@ -279,7 +272,8 @@ DEALINGS IN THE SOFTWARE.
       <dependency groupId="net.arnx" artifactId="jsonic" version="${jsonic-version}"/>
       <dependency groupId="net.sf.saxon" artifactId="Saxon-HE" version="9.6.0-4"/>
       <dependency groupId="nu.validator" artifactId="galimatias" version="0.1.2"/>
-      <dependency groupId="nu.validator" artifactId="htmlparser" version="1.4.9"/>
+      <dependency groupId="nu.validator" artifactId="htmlparser" version="1.4.11"/>
+      <dependency groupId="nu.validator" artifactId="cssvalidator" version="1.0.1"/>
       <dependency groupId="nu.validator" artifactId="jing" version="20171006VNU"/>
       <dependency groupId="org.apache.httpcomponents" artifactId="httpclient" version="${httpclient-version}"/>
       <dependency groupId="org.apache.httpcomponents" artifactId="httpcore" version="${httpcore-version}"/>
@@ -290,7 +284,6 @@ DEALINGS IN THE SOFTWARE.
       <dependency groupId="org.eclipse.jetty" artifactId="jetty-servlets" version="${jetty-version}"/>
       <dependency groupId="org.eclipse.jetty" artifactId="jetty-util" version="${jetty-version}"/>
       <dependency groupId="org.eclipse.jetty" artifactId="jetty-util-ajax" version="${jetty-version}"/>
-      <dependency groupId="org.mozilla" artifactId="rhino" version="${rhino-version}"/>
       <dependency groupId="xerces" artifactId="xercesImpl" version="2.9.1"/>
       <dependency groupId="xml-apis" artifactId="xml-apis" version="1.0.b2"/>
     </artifact:pom>
@@ -313,5 +306,6 @@ DEALINGS IN THE SOFTWARE.
   </target>
   <import file=".ant/build-galimatias.xml"/>
   <import file=".ant/build-htmlparser.xml"/>
+  <import file=".ant/build-cssvalidator.xml"/>
   <import file=".ant/build-jing.xml"/>
 </project>
