@@ -33,8 +33,8 @@ released upstream in these formats:
    [15]: https://validator.github.io/validator/#standalone
    [16]: https://validator.github.io/validator/#servlet
 
-**Note:** The _vnu.jar_ and _vnu.war_ files require a Java 8 environment; they
-won’t run in Java 7 or older environment.
+**Note:** The _vnu.jar_ and _vnu.war_ files require a Java 9 environment; they
+won’t run in Java 8 or older environment.
 
 This fork publishes a new vnu-jar-master NPM module, which is built from the master branch. It is supposed to be newer, than `vnu-jar` and `vnu-jar@dev`, if you need to detect more problems in your HTML, than the released or development versions can today.
 
